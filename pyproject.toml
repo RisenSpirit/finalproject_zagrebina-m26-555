@@ -1,7 +1,7 @@
 [project]
 name = "finalproject-zagrebina-m26-555"
 version = "0.1.0"
-description = "Add your description here"
+description = "ValutaTrade Hub — консольная платформа для симуляции торговли фиатными и криптовалютами с сервисом парсинга курсов"
 readme = "README.md"
 authors = [
     { name = "Victoria Zagrebina", email = "seventeen.joker@gmail.com" }

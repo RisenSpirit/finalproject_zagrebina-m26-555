@@ -5,7 +5,7 @@ import shlex
 from prettytable import PrettyTable
 
 from valutatrade_hub.core import usecases
-from valutatrade_hub.core.currencies import all_currencies, supported_codes
+from valutatrade_hub.core.currencies import all_currencies, is_crypto, supported_codes
 from valutatrade_hub.core.exceptions import (
     ApiRequestError,
     CurrencyNotFoundError,
@@ -21,12 +21,16 @@ COMMANDS = {
     "buy": ("--currency <str> --amount <float>", "Купить валюту"),
     "sell": ("--currency <str> --amount <float>", "Продать валюту"),
     "get-rate": ("--from <str> --to <str>", "Курс валюты"),
+    "update-rates": ("[--source coingecko|exchangerate]", "Обновить курсы из API"),
+    "show-rates": (
+        "[--currency <str>] [--top <int>] [--base <str>]",
+        "Курсы из локального кеша",
+    ),
     "currencies": ("", "Список поддерживаемых валют"),
     "help": ("[<команда>]", "Список команд или справка по команде"),
     "exit": ("", "Выход"),
 }
 
-CRYPTO_CODES = {"BTC", "ETH"}
 
 def parse_args(tokens: list[str]) -> dict[str, str]:
     """Разобрать ['--username', 'alice', ...] в {'username': 'alice'}."""
@@ -51,7 +55,7 @@ def require(args: dict[str, str], *names: str) -> list[str]:
 
 
 def fmt_amount(code: str, value: float) -> str:
-    return f"{value:.4f}" if code in CRYPTO_CODES else f"{value:.2f}"
+    return f"{value:.4f}" if is_crypto(code) else f"{value:.2f}"
 
 
 def fmt_money(value: float) -> str:
@@ -175,6 +179,47 @@ class CLI:
         )
         print(f"Обратный курс {to_code}→{from_code}: {fmt_rate(1 / rate)}")
 
+    def cmd_update_rates(self, args: dict[str, str]) -> None:
+        try:
+            result = usecases.refresh_rates(args.get("source"))
+        except ApiRequestError as e:
+            print("INFO: Starting rates update...")
+            for part in e.reason.split("; "):
+                print(f"ERROR: Failed to fetch from {part}")
+            print("Update failed. Check logs/parser.log for details.")
+            return
+        print("INFO: Starting rates update...")
+        for source, count, error in result.steps:
+            if error is None:
+                print(f"INFO: Fetching from {source}... OK ({count} rates)")
+            else:
+                print(f"ERROR: Failed to fetch from {source}: {error}")
+        print(f"INFO: Writing {result.total} rates to data/rates.json...")
+        if result.has_errors:
+            print(
+                "Update completed with errors. Check logs/parser.log for details. "
+                f"Total rates updated: {result.total}."
+            )
+        else:
+            print(
+                f"Update successful. Total rates updated: {result.total}. "
+                f"Last refresh: {result.last_refresh}"
+            )
+
+    def cmd_show_rates(self, args: dict[str, str]) -> None:
+        top = args.get("top")
+        if top is not None:
+            try:
+                top = int(top)
+            except ValueError:
+                raise ValueError("'top' должен быть целым числом") from None
+        data = usecases.show_rates(args.get("currency"), top, args.get("base"))
+        print(f"Rates from cache (updated at {data['last_refresh']}):")
+        for pair, rate, _updated in data["rows"]:
+            print(f"- {pair}: {fmt_rate(rate)}")
+        if data["stale"]:
+            print("Внимание: данные устарели. Выполните 'update-rates'.")
+
     def handle(self, line: str) -> bool:
         """Выполнить одну команду. Вернуть False, если пора выйти."""
         tokens = shlex.split(line)
@@ -198,6 +243,8 @@ class CLI:
             "buy": self.cmd_buy,
             "sell": self.cmd_sell,
             "get-rate": self.cmd_get_rate,
+            "update-rates": self.cmd_update_rates,
+            "show-rates": self.cmd_show_rates,
         }
         handler = handlers.get(command)
         if handler is None:

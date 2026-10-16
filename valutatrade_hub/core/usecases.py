@@ -6,18 +6,22 @@
 Синглтоны:
 - SettingsLoader — TTL курсов (rates_ttl_seconds), базовая валюта;
 - DatabaseManager — все чтения/записи JSON (users, portfolios, rates).
+Курсы получает Parser Service (RatesUpdater), Core читает снимок rates.json.
 
 @log_action применяется к register, login, buy, sell.
 """
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
+from valutatrade_hub.core.currencies import is_crypto
 from valutatrade_hub.core.exceptions import ApiRequestError, CurrencyNotFoundError
-from valutatrade_hub.core.models import DEFAULT_RATES_TO_USD, Portfolio, User
+from valutatrade_hub.core.models import Portfolio, User
 from valutatrade_hub.core.utils import validate_amount, validate_currency_code
 from valutatrade_hub.decorators import log_action
 from valutatrade_hub.infra.database import DatabaseManager
 from valutatrade_hub.infra.settings import SettingsLoader
+from valutatrade_hub.parser_service.storage import parse_ts, utc_now_iso
+from valutatrade_hub.parser_service.updater import RatesUpdater, UpdateResult
 
 settings = SettingsLoader()
 db = DatabaseManager()
@@ -86,62 +90,56 @@ def _save_portfolio(portfolio: Portfolio) -> None:
     db.update("portfolios", replace)
 
 
-def _fetch_rates() -> dict[str, float]:
-    """Источник курсов. Пока Parser Service не подключён — заглушка.
-
-    При сбое источника должен бросать ApiRequestError.
-    """
-    return dict(DEFAULT_RATES_TO_USD)
+# rates.json (снимок от Parser Service):
+# {"pairs": {"BTC_USD": {"rate": ..., "updated_at": "...Z", "source": ...}},
+#  "last_refresh": "...Z"}
 
 
-def _refresh_rates_cache() -> dict:
-    try:
-        fetched = _fetch_rates()
-    except ApiRequestError:
-        raise
-    except Exception as exc:  # любой сбой источника — в ApiRequestError
-        raise ApiRequestError(str(exc)) from exc
+def refresh_rates(source: str | None = None) -> UpdateResult:
+    """Запросить свежие курсы у Parser Service (ApiRequestError при неудаче)."""
+    return RatesUpdater().run_update(source)
 
-    now = datetime.now().replace(microsecond=0).isoformat()
-    cache = {
-        key: {"rate": rate, "updated_at": now}
-        for key, rate in fetched.items()
-        if key != "USD_USD"
-    }
-    cache["source"] = "StubRates"
-    cache["last_refresh"] = now
-    db.write("rates", cache)
-    return cache
+
+def _pairs(cache: dict) -> dict:
+    if not isinstance(cache, dict):
+        return {}
+    pairs = cache.get("pairs")
+    return pairs if isinstance(pairs, dict) else {}
 
 
 def _is_fresh(updated_at: str) -> bool:
     ttl = timedelta(seconds=settings.get("rates_ttl_seconds", 300))
-    try:
-        return datetime.now() - datetime.fromisoformat(updated_at) < ttl
-    except (TypeError, ValueError):
-        return False
+    ts = parse_ts(updated_at)
+    return ts is not None and datetime.now(UTC) - ts < ttl
 
 
 def _rate_to_usd(code: str, cache: dict) -> tuple[float, str] | None:
     """Курс 1 code в USD и время обновления из кеша."""
     if code == "USD":
-        return 1.0, cache.get("last_refresh") or datetime.now().isoformat()
-    entry = cache.get(f"{code}_USD")
+        return 1.0, cache.get("last_refresh") or utc_now_iso()
+    entry = _pairs(cache).get(f"{code}_USD")
     if isinstance(entry, dict) and "rate" in entry:
         return float(entry["rate"]), entry.get("updated_at", "")
     return None
 
 
 def _get_cache(codes: list[str]) -> dict:
-    """Кеш rates.json; обновить, если нужных курсов нет или они устарели.
-
-    Если обновить не удалось — ApiRequestError.
+    """Кеш rates.json. Если нужных курсов нет или они старше TTL —
+    обновить через Parser Service; не вышло → ApiRequestError.
     """
     cache = db.read("rates")
     for code in codes:
         found = _rate_to_usd(code, cache)
         if found is None or (code != "USD" and not _is_fresh(found[1])):
-            return _refresh_rates_cache()
+            try:
+                refresh_rates()
+            except ApiRequestError as exc:
+                state = "устарели" if found else "отсутствуют"
+                raise ApiRequestError(
+                    f"данные о курсе {code} {state}, обновить не удалось "
+                    f"({exc.reason}). Выполните 'update-rates' позже"
+                ) from None
+            return db.read("rates")
     return cache
 
 
@@ -166,6 +164,58 @@ def _rates_for(codes: list[str]) -> dict[str, float]:
             raise ApiRequestError(f"нет данных о курсе {code}→USD")
         rates[f"{code}_USD"] = found[0]
     return rates
+
+
+def show_rates(
+    currency: str | None = None, top: int | None = None, base: str | None = None
+) -> dict:
+    """Курсы из локального кеша (без обращения к API) с фильтрами."""
+    cache = db.read("rates")
+    pairs = _pairs(cache)
+    if not pairs:
+        raise ValueError(
+            "Локальный кеш курсов пуст. Выполните 'update-rates', "
+            "чтобы загрузить данные."
+        )
+
+    base = validate_currency_code(base) if base else "USD"
+    if base != "USD" and f"{base}_USD" not in pairs:
+        raise ValueError(f"Курс для '{base}' не найден в кеше.")
+    base_rate = 1.0 if base == "USD" else float(pairs[f"{base}_USD"]["rate"])
+
+    rows = []  # (pair, rate, updated_at)
+    for pair, entry in pairs.items():
+        code = pair.split("_", 1)[0]
+        if code == base:
+            continue
+        rows.append(
+            (
+                f"{code}_{base}",
+                float(entry["rate"]) / base_rate,
+                entry.get("updated_at", ""),
+            )
+        )
+    if base != "USD":  # сам USD относительно новой базы
+        rows.append((f"USD_{base}", 1 / base_rate, pairs[f"{base}_USD"]["updated_at"]))
+
+    if currency:
+        code = currency.strip().upper()
+        rows = [r for r in rows if r[0].split("_", 1)[0] == code]
+        if not rows:
+            raise ValueError(f"Курс для '{code}' не найден в кеше.")
+    if top is not None:
+        if top <= 0:
+            raise ValueError("'top' должен быть положительным целым числом")
+        rows = [r for r in rows if is_crypto(r[0].split("_", 1)[0])]
+        rows = sorted(rows, key=lambda r: r[1], reverse=True)[:top]
+    else:
+        rows.sort(key=lambda r: r[0])
+
+    return {
+        "last_refresh": cache.get("last_refresh", ""),
+        "rows": rows,
+        "stale": not _is_fresh(cache.get("last_refresh", "")),
+    }
 
 
 def show_portfolio(user: User, base: str | None = None) -> dict:

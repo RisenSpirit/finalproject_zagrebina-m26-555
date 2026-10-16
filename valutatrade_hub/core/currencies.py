@@ -73,6 +73,7 @@ _REGISTRY: dict[str, Currency] = {
         FiatCurrency("British Pound", "GBP", "United Kingdom"),
         CryptoCurrency("Bitcoin", "BTC", "SHA-256", 1.12e12),
         CryptoCurrency("Ethereum", "ETH", "Ethash", 4.5e11),
+        CryptoCurrency("Solana", "SOL", "Proof of History", 7.0e10),
     )
 }
 
@@ -92,3 +93,7 @@ def supported_codes() -> list[str]:
 
 def all_currencies() -> list[Currency]:
     return [_REGISTRY[c] for c in supported_codes()]
+
+
+def is_crypto(code: str) -> bool:
+    return isinstance(_REGISTRY.get(code), CryptoCurrency)

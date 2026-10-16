@@ -54,6 +54,7 @@ class User:
                 f"Пароль должен быть не короче {MIN_PASSWORD_LENGTH} символов"
             )
 
+    # --- геттеры / сеттеры ---
     @property
     def user_id(self) -> int:
         return self._user_id
@@ -80,6 +81,7 @@ class User:
     def registration_date(self) -> datetime:
         return self._registration_date
 
+    # --- методы ---
     def get_user_info(self) -> dict:
         """Информация о пользователе без пароля и соли."""
         return {
@@ -98,6 +100,7 @@ class User:
         """Проверить введённый пароль."""
         return hash_password(password, self._salt) == self._hashed_password
 
+    # --- сериализация ---
     def to_dict(self) -> dict:
         return {
             "user_id": self._user_id,
@@ -255,4 +258,5 @@ DEFAULT_RATES_TO_USD: dict[str, float] = {
     "GBP_USD": 1.2700,
     "BTC_USD": 59337.21,
     "ETH_USD": 3720.00,
+    "SOL_USD": 145.12,
 }

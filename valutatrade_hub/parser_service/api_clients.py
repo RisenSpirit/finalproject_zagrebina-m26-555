@@ -77,6 +77,7 @@ class CoinGeckoClient(BaseApiClient):
     name = "coingecko"
 
     def fetch_rates(self) -> dict[str, float]:
+        """Курсы криптовалют к USD: {'BTC_USD': 59337.21, ...}."""
         cfg = self.config
         base = cfg.BASE_CURRENCY.lower()
         ids = [cfg.CRYPTO_ID_MAP[c] for c in cfg.CRYPTO_CURRENCIES]
@@ -107,6 +108,7 @@ class ExchangeRateApiClient(BaseApiClient):
     name = "exchangerate"
 
     def fetch_rates(self) -> dict[str, float]:
+        """Курсы фиатных валют к USD: {'EUR_USD': 1.0786, ...}."""
         cfg = self.config
         if not cfg.EXCHANGERATE_API_KEY:
             raise ApiRequestError(

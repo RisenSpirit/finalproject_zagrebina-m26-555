@@ -57,28 +57,34 @@ class User:
     # --- геттеры / сеттеры ---
     @property
     def user_id(self) -> int:
+        """Идентификатор пользователя (только чтение)."""
         return self._user_id
 
     @property
     def username(self) -> str:
+        """Имя пользователя."""
         return self._username
 
     @username.setter
     def username(self, value: str) -> None:
+        """Установить имя; пустое имя запрещено."""
         if not isinstance(value, str) or not value.strip():
             raise ValueError("Имя пользователя не может быть пустым")
         self._username = value.strip()
 
     @property
     def hashed_password(self) -> str:
+        """Хеш пароля sha256(password + salt)."""
         return self._hashed_password
 
     @property
     def salt(self) -> str:
+        """Соль пользователя."""
         return self._salt
 
     @property
     def registration_date(self) -> datetime:
+        """Дата регистрации."""
         return self._registration_date
 
     # --- методы ---
@@ -102,6 +108,7 @@ class User:
 
     # --- сериализация ---
     def to_dict(self) -> dict:
+        """Словарь для users.json (дата в ISO-формате)."""
         return {
             "user_id": self._user_id,
             "username": self._username,
@@ -112,6 +119,7 @@ class User:
 
     @classmethod
     def from_dict(cls, data: dict) -> "User":
+        """Создать пользователя из записи users.json."""
         return cls(
             user_id=data["user_id"],
             username=data["username"],
@@ -145,10 +153,12 @@ class Wallet:
 
     @property
     def balance(self) -> float:
+        """Текущий баланс."""
         return self._balance
 
     @balance.setter
     def balance(self, value: float) -> None:
+        """Установить баланс; запрещены отрицательные и нечисловые значения."""
         if isinstance(value, bool) or not isinstance(value, (int, float)):
             raise TypeError("Баланс должен быть числом")
         if value < 0:
@@ -167,9 +177,11 @@ class Wallet:
         self.balance = self._balance - amount
 
     def get_balance_info(self) -> str:
+        """Строка с кодом валюты и балансом."""
         return f"{self.currency_code}: {self._balance:.4f}"
 
     def to_dict(self) -> dict:
+        """Словарь для сохранения в JSON."""
         return {"currency_code": self.currency_code, "balance": self._balance}
 
 
@@ -188,6 +200,7 @@ class Portfolio:
 
     @property
     def user_id(self) -> int:
+        """Идентификатор владельца портфеля."""
         return self._user_id
 
     @property
@@ -209,6 +222,7 @@ class Portfolio:
         return wallet
 
     def get_wallet(self, currency_code: str) -> Wallet | None:
+        """Кошелёк по коду валюты или None."""
         return self._wallets.get(currency_code)
 
     def get_total_value(
@@ -233,6 +247,7 @@ class Portfolio:
         return total_usd / rates[base_key]
 
     def to_dict(self) -> dict:
+        """Словарь для portfolios.json."""
         return {
             "user_id": self._user_id,
             "wallets": {
@@ -242,6 +257,7 @@ class Portfolio:
 
     @classmethod
     def from_dict(cls, data: dict, user: User | None = None) -> "Portfolio":
+        """Создать портфель из записи portfolios.json."""
         wallets = {
             code: Wallet(code, info.get("balance", 0.0))
             for code, info in data.get("wallets", {}).items()

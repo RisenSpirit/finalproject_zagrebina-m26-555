@@ -12,6 +12,7 @@ from valutatrade_hub.infra.database import DatabaseManager
 
 
 def utc_now_iso() -> str:
+    """Текущее время UTC в формате ISO с суффиксом Z."""
     return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
@@ -27,6 +28,7 @@ def parse_ts(value: str) -> datetime | None:
 def make_record(
     pair: str, rate: float, timestamp: str, source: str, meta: dict[str, Any]
 ) -> dict[str, Any]:
+    """Запись истории для exchange_rates.json с уникальным id."""
     from_code, to_code = pair.split("_", 1)
     return {
         "id": f"{pair}_{timestamp}",
@@ -40,6 +42,8 @@ def make_record(
 
 
 class RatesStorage:
+    """Чтение и запись истории курсов и снимка rates.json."""
+
     def __init__(self, db: DatabaseManager | None = None) -> None:
         self.db = db or DatabaseManager()
 
@@ -58,6 +62,7 @@ class RatesStorage:
         return added
 
     def read_history(self) -> list[dict[str, Any]]:
+        """Все записи истории курсов."""
         return self.db.read("history")
 
     def save_snapshot(
@@ -79,5 +84,6 @@ class RatesStorage:
         return self.db.update("rates", merge)
 
     def read_snapshot(self) -> dict[str, Any]:
+        """Текущий снимок rates.json."""
         data = self.db.read("rates")
         return data if isinstance(data, dict) else {}

@@ -38,21 +38,27 @@ class Currency(ABC):
 
 
 class FiatCurrency(Currency):
+    """Фиатная валюта с указанием страны/зоны эмиссии."""
+
     def __init__(self, name: str, code: str, issuing_country: str) -> None:
         super().__init__(name, code)
         self.issuing_country = issuing_country
 
     def get_display_info(self) -> str:
+        """Строка вида '[FIAT] USD — US Dollar (Issuing: United States)'."""
         return f"[FIAT] {self.code} — {self.name} (Issuing: {self.issuing_country})"
 
 
 class CryptoCurrency(Currency):
+    """Криптовалюта с алгоритмом и рыночной капитализацией."""
+
     def __init__(self, name: str, code: str, algorithm: str, market_cap: float) -> None:
         super().__init__(name, code)
         self.algorithm = algorithm
         self.market_cap = float(market_cap)
 
     def get_display_info(self) -> str:
+        """Строка вида '[CRYPTO] BTC — Bitcoin (Algo: SHA-256, MCAP: 1.12e12)'."""
         return (
             f"[CRYPTO] {self.code} — {self.name} "
             f"(Algo: {self.algorithm}, MCAP: {_short_number(self.market_cap)})"
@@ -88,12 +94,15 @@ def get_currency(code: str) -> Currency:
 
 
 def supported_codes() -> list[str]:
+    """Отсортированный список кодов из реестра."""
     return sorted(_REGISTRY)
 
 
 def all_currencies() -> list[Currency]:
+    """Все валюты реестра, отсортированные по коду."""
     return [_REGISTRY[c] for c in supported_codes()]
 
 
 def is_crypto(code: str) -> bool:
+    """True, если код относится к криптовалюте."""
     return isinstance(_REGISTRY.get(code), CryptoCurrency)

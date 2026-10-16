@@ -42,6 +42,7 @@ def _find_user(username: str) -> User | None:
 
 @log_action("REGISTER")
 def register(username: str, password: str) -> User:
+    """Зарегистрировать пользователя и создать ему пустой портфель."""
     username = (username or "").strip()
     if not username:
         raise ValueError("Имя пользователя не может быть пустым")
@@ -67,6 +68,7 @@ def register(username: str, password: str) -> User:
 
 @log_action("LOGIN")
 def login(username: str, password: str) -> User:
+    """Проверить имя и пароль, вернуть пользователя."""
     user = _find_user(username)
     if user is None:
         raise ValueError(f"Пользователь '{username}' не найден")
@@ -219,6 +221,7 @@ def show_rates(
 
 
 def show_portfolio(user: User, base: str | None = None) -> dict:
+    """Кошельки пользователя с оценкой в базовой валюте и итогом."""
     base = base or BASE_CURRENCY
     try:
         base = validate_currency_code(base)
@@ -245,6 +248,7 @@ def show_portfolio(user: User, base: str | None = None) -> dict:
 
 @log_action("BUY", verbose=True)
 def buy(user: User, currency: str, amount: float) -> dict:
+    """Купить amount валюты: пополнить (или создать) кошелёк, оценить в USD."""
     currency = validate_currency_code(currency)
     amount = validate_amount(amount)
     rate, _ = get_rate(currency, BASE_CURRENCY)
@@ -268,6 +272,7 @@ def buy(user: User, currency: str, amount: float) -> dict:
 
 @log_action("SELL", verbose=True)
 def sell(user: User, currency: str, amount: float) -> dict:
+    """Продать amount валюты: списать с кошелька, выручку зачислить в USD."""
     currency = validate_currency_code(currency)
     amount = validate_amount(amount)
     portfolio = _load_portfolio(user)

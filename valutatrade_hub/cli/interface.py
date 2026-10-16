@@ -48,6 +48,7 @@ def parse_args(tokens: list[str]) -> dict[str, str]:
 
 
 def require(args: dict[str, str], *names: str) -> list[str]:
+    """Вернуть значения обязательных аргументов или бросить ValueError."""
     missing = [f"--{n}" for n in names if n not in args]
     if missing:
         raise ValueError(f"Не хватает аргументов: {', '.join(missing)}")
@@ -55,20 +56,24 @@ def require(args: dict[str, str], *names: str) -> list[str]:
 
 
 def fmt_amount(code: str, value: float) -> str:
+    """Форматировать количество валюты: 4 знака для крипты, 2 для фиата."""
     return f"{value:.4f}" if is_crypto(code) else f"{value:.2f}"
 
 
 def fmt_money(value: float) -> str:
+    """Форматировать денежную сумму с разделителем тысяч."""
     return f"{value:,.2f}"
 
 
 def fmt_rate(rate: float) -> str:
+    """Форматировать курс: больше знаков для маленьких значений."""
     if rate < 1:
         return f"{rate:.8f}"
     return f"{rate:.4f}" if rate < 100 else f"{rate:.2f}"
 
 
 def print_help(command: str | None = None) -> None:
+    """Вывести таблицу команд или справку по одной команде."""
     if command:
         if command not in COMMANDS:
             print(f"Неизвестная команда '{command}'")
@@ -86,6 +91,7 @@ def print_help(command: str | None = None) -> None:
 
 
 def print_currencies() -> None:
+    """Вывести таблицу поддерживаемых валют."""
     table = PrettyTable(["Код", "Описание"])
     table.align = "l"
     for currency in all_currencies():
@@ -94,6 +100,8 @@ def print_currencies() -> None:
 
 
 class CLI:
+    """Интерактивная оболочка: хранит текущего пользователя и вызывает usecases."""
+
     def __init__(self) -> None:
         self.current_user: User | None = None
 
@@ -103,6 +111,7 @@ class CLI:
         return self.current_user
 
     def cmd_register(self, args: dict[str, str]) -> None:
+        """Команда register: регистрация нового пользователя."""
         username, password = require(args, "username", "password")
         user = usecases.register(username, password)
         print(
@@ -111,11 +120,13 @@ class CLI:
         )
 
     def cmd_login(self, args: dict[str, str]) -> None:
+        """Команда login: вход и запоминание текущего пользователя."""
         username, password = require(args, "username", "password")
         self.current_user = usecases.login(username, password)
         print(f"Вы вошли как '{self.current_user.username}'")
 
     def cmd_show_portfolio(self, args: dict[str, str]) -> None:
+        """Команда show-portfolio: кошельки и итог в базовой валюте."""
         user = self._require_login()
         data = usecases.show_portfolio(user, args.get("base"))
         if not data["rows"]:
@@ -129,6 +140,7 @@ class CLI:
         print(f"ИТОГО: {fmt_money(data['total'])} {base}")
 
     def cmd_buy(self, args: dict[str, str]) -> None:
+        """Команда buy: покупка валюты."""
         user = self._require_login()
         currency, amount = require(args, "currency", "amount")
         r = usecases.buy(user, currency, amount)
@@ -145,6 +157,7 @@ class CLI:
         print(f"Оценочная стоимость покупки: {fmt_money(r['cost'])} {base}")
 
     def cmd_sell(self, args: dict[str, str]) -> None:
+        """Команда sell: продажа валюты с зачислением выручки в USD."""
         user = self._require_login()
         currency, amount = require(args, "currency", "amount")
         r = usecases.sell(user, currency, amount)
@@ -165,6 +178,7 @@ class CLI:
             print(f"Оценочная выручка: {fmt_money(r['revenue'])} {base}")
 
     def cmd_get_rate(self, args: dict[str, str]) -> None:
+        """Команда get-rate: курс одной валюты к другой."""
         from_code, to_code = require(args, "from", "to")
         from_code, to_code = from_code.upper(), to_code.upper()
         try:
@@ -180,6 +194,7 @@ class CLI:
         print(f"Обратный курс {to_code}→{from_code}: {fmt_rate(1 / rate)}")
 
     def cmd_update_rates(self, args: dict[str, str]) -> None:
+        """Команда update-rates: обновить курсы через Parser Service."""
         try:
             result = usecases.refresh_rates(args.get("source"))
         except ApiRequestError as e:
@@ -207,6 +222,7 @@ class CLI:
             )
 
     def cmd_show_rates(self, args: dict[str, str]) -> None:
+        """Команда show-rates: курсы из локального кеша с фильтрами."""
         top = args.get("top")
         if top is not None:
             try:
@@ -254,6 +270,7 @@ class CLI:
         return True
 
     def run(self) -> None:
+        """Главный цикл: читать команды и выводить понятные ошибки."""
         print("ValutaTrade Hub. Введите help для списка команд, exit — выход.")
         while True:
             try:
@@ -280,5 +297,6 @@ class CLI:
 
 
 def run_cli() -> None:
+    """Точка входа CLI: настроить логирование и запустить оболочку."""
     setup_logging()
     CLI().run()

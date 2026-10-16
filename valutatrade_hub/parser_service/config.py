@@ -31,6 +31,7 @@ def _read_env_file(path: Path) -> dict[str, str]:
 
 
 def get_secret(name: str) -> str | None:
+    """Секрет из переменной окружения или файла .env."""
     return os.getenv(name) or _read_env_file(ENV_FILE).get(name)
 
 
@@ -41,6 +42,8 @@ def _data_path(key: str) -> str:
 @dataclass
 class ParserConfig:
     # Ключ загружается из окружения / .env (не из кода)
+    """Настройки Parser Service: ключ, URL, списки валют, пути, таймаут."""
+
     EXCHANGERATE_API_KEY: str | None = field(
         default_factory=lambda: get_secret("EXCHANGERATE_API_KEY")
     )

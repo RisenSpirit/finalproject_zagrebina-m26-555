@@ -22,6 +22,8 @@ logger = logging.getLogger(PARSER_LOGGER_NAME)
 
 @dataclass
 class UpdateResult:
+    """Итог обновления: число курсов, время, успехи и ошибки по источникам."""
+
     total: int = 0
     last_refresh: str = ""
     ok: list[tuple[str, int]] = field(default_factory=list)  # (source, count)
@@ -31,10 +33,13 @@ class UpdateResult:
 
     @property
     def has_errors(self) -> bool:
+        """True, если хотя бы один источник вернул ошибку."""
         return bool(self.errors)
 
 
 class RatesUpdater:
+    """Опрашивает API-клиентов, объединяет курсы и сохраняет их."""
+
     def __init__(
         self,
         clients: list[BaseApiClient] | None = None,

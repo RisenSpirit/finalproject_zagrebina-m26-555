@@ -17,6 +17,8 @@ logger = logging.getLogger(PARSER_LOGGER_NAME)
 
 
 class RatesScheduler:
+    """Периодический запуск RatesUpdater с заданным интервалом."""
+
     def __init__(
         self, updater: RatesUpdater | None = None, interval: int | None = None
     ) -> None:
@@ -26,6 +28,7 @@ class RatesScheduler:
         self._thread: threading.Thread | None = None
 
     def run_once(self) -> None:
+        """Выполнить одно обновление и вывести итог."""
         try:
             result = self.updater.run_update()
             print(
@@ -53,10 +56,12 @@ class RatesScheduler:
         self._thread.start()
 
     def stop(self) -> None:
+        """Остановить цикл обновлений."""
         self._stop.set()
 
 
 def main() -> None:
+    """Запуск планировщика из командной строки."""
     parser = argparse.ArgumentParser(description="Периодическое обновление курсов")
     parser.add_argument("--interval", type=int, default=None, help="секунды")
     args = parser.parse_args()

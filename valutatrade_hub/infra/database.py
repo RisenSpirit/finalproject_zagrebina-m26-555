@@ -25,6 +25,7 @@ class DatabaseManager:
     _instance: "DatabaseManager | None" = None
 
     def __new__(cls) -> "DatabaseManager":
+        """Вернуть единственный экземпляр (создаётся при первом вызове)."""
         if cls._instance is None:
             instance = super().__new__(cls)
             instance._settings = SettingsLoader()

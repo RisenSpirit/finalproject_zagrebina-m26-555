@@ -43,6 +43,7 @@ def _configure(name: str, file_name: str) -> logging.Logger:
 
 
 def setup_logging() -> logging.Logger:
+    """Настроить логгеры actions и parser (вызывается один раз)."""
     settings = SettingsLoader()
     _configure(PARSER_LOGGER_NAME, settings.get("parser_log_file"))
     return _configure(LOGGER_NAME, settings.get("log_file"))

@@ -52,6 +52,7 @@ class SettingsLoader:
     _instance: "SettingsLoader | None" = None
 
     def __new__(cls) -> "SettingsLoader":
+        """Вернуть единственный экземпляр; конфиг читается один раз."""
         if cls._instance is None:
             instance = super().__new__(cls)
             instance._config = {}
@@ -71,6 +72,7 @@ class SettingsLoader:
         self._config = config
 
     def get(self, key: str, default: Any = _MISSING) -> Any:
+        """Значение настройки; без default неизвестный ключ — KeyError."""
         if key in self._config:
             return self._config[key]
         if default is _MISSING:
@@ -84,6 +86,7 @@ class SettingsLoader:
     # удобные пути
     @property
     def data_dir(self) -> Path:
+        """Абсолютный путь к папке data."""
         return PROJECT_ROOT / self.get("data_dir")
 
     def data_file(self, key: str) -> Path:
@@ -92,4 +95,5 @@ class SettingsLoader:
 
     @property
     def log_path(self) -> Path:
+        """Путь к файлу лога операций."""
         return PROJECT_ROOT / self.get("log_dir") / self.get("log_file")

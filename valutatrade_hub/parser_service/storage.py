@@ -43,7 +43,6 @@ class RatesStorage:
     def __init__(self, db: DatabaseManager | None = None) -> None:
         self.db = db or DatabaseManager()
 
-    # ---------- история ----------
     def append_history(self, records: list[dict[str, Any]]) -> int:
         """Добавить записи без дублей по id. Вернуть число добавленных."""
         added = 0
@@ -61,7 +60,6 @@ class RatesStorage:
     def read_history(self) -> list[dict[str, Any]]:
         return self.db.read("history")
 
-    # ---------- снимок ----------
     def save_snapshot(
         self, pairs: dict[str, dict[str, Any]], last_refresh: str
     ) -> dict[str, Any]:

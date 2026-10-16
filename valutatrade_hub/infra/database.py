@@ -15,6 +15,7 @@ TABLES: dict[str, tuple[str, Any]] = {
     "users": ("users_file", []),
     "portfolios": ("portfolios_file", []),
     "rates": ("rates_file", {}),
+    "history": ("history_file", []),
 }
 
 

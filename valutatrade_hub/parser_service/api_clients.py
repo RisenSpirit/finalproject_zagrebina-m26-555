@@ -122,7 +122,8 @@ class ExchangeRateApiClient(BaseApiClient):
             reason = data.get("error-type", "unknown error")
             raise ApiRequestError(str(reason))
 
-        api_rates = data.get("rates", {})
+        # v6 отдаёт курсы в "conversion_rates", открытый эндпоинт — в "rates"
+        api_rates = data.get("conversion_rates") or data.get("rates") or {}
         rates: dict[str, float] = {}
         for code in cfg.FIAT_CURRENCIES:
             value = api_rates.get(code)

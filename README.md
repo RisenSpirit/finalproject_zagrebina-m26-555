@@ -66,7 +66,7 @@ finalproject_zagrebina-m26-555/
 Нужны Python 3.11+ и [uv](https://docs.astral.sh/uv/).
 
 ```bash
-git clone https://github.com/seventeenjoker/finalproject_zagrebina-m26-555.git
+git clone https://github.com/RisenSpirit/finalproject_zagrebina-m26-555.git
 cd finalproject_zagrebina-m26-555
 uv sync
 ```

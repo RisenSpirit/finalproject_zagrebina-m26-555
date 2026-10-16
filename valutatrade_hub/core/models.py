@@ -4,6 +4,11 @@ import hashlib
 import secrets
 from datetime import datetime
 
+from valutatrade_hub.core.exceptions import (
+    CurrencyNotFoundError,
+    InsufficientFundsError,
+)
+
 MIN_PASSWORD_LENGTH = 4
 
 
@@ -117,8 +122,15 @@ class Wallet:
     """Кошелёк пользователя для одной валюты."""
 
     def __init__(self, currency_code: str, balance: float = 0.0) -> None:
-        self.currency_code = currency_code
+        if not isinstance(currency_code, str) or not currency_code.strip():
+            raise ValueError("Код валюты не может быть пустым")
+        self._currency_code = currency_code.strip().upper()
         self.balance = balance  # через сеттер с проверкой
+
+    @property
+    def currency_code(self) -> str:
+        """Код валюты кошелька (только чтение)."""
+        return self._currency_code
 
     @staticmethod
     def _validate_amount(amount: float) -> float:
@@ -148,10 +160,7 @@ class Wallet:
         """Снять средства, если баланса хватает."""
         amount = self._validate_amount(amount)
         if amount > self._balance:
-            raise ValueError(
-                f"Недостаточно средств: доступно {self._balance:.4f} "
-                f"{self.currency_code}, требуется {amount:.4f} {self.currency_code}"
-            )
+            raise InsufficientFundsError(self._balance, amount, self._currency_code)
         self.balance = self._balance - amount
 
     def get_balance_info(self) -> str:
@@ -211,12 +220,12 @@ class Portfolio:
         rates = {**rates, "USD_USD": 1.0}
         base_key = f"{base_currency}_USD"
         if base_key not in rates:
-            raise ValueError(f"Неизвестная базовая валюта '{base_currency}'")
+            raise CurrencyNotFoundError(base_currency)
         total_usd = 0.0
         for code, wallet in self._wallets.items():
             key = f"{code}_USD"
             if key not in rates:
-                raise ValueError(f"Нет курса для валюты '{code}'")
+                raise CurrencyNotFoundError(code)
             total_usd += wallet.balance * rates[key]
         return total_usd / rates[base_key]
 
@@ -243,6 +252,7 @@ DEFAULT_RATES_TO_USD: dict[str, float] = {
     "USD_USD": 1.0,
     "EUR_USD": 1.0786,
     "RUB_USD": 0.01016,
+    "GBP_USD": 1.2700,
     "BTC_USD": 59337.21,
     "ETH_USD": 3720.00,
 }

@@ -1,7 +1,7 @@
 [project]
 name = "finalproject-zagrebina-m26-555"
 version = "0.1.0"
-description = "Add your description here"
+description = "ValutaTrade Hub — консольная платформа для симуляции торговли фиатными и криптовалютами с сервисом парсинга курсов"
 readme = "README.md"
 authors = [
     { name = "Victoria Zagrebina", email = "seventeen.joker@gmail.com" }
@@ -9,10 +9,11 @@ authors = [
 requires-python = ">=3.11"
 dependencies = [
     "prettytable>=3.18.0",
+    "requests>=2.34.2",
 ]
 
 [project.scripts]
-finalproject-zagrebina-m26-555 = "finalproject_zagrebina_m26_555:main"
+project = "valutatrade_hub.cli.interface:run_cli"
 
 [build-system]
 requires = ["uv_build>=0.12.16,<0.13.0"]
@@ -28,3 +29,14 @@ line-length = 88
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W"]
+
+[tool.uv.build-backend]
+module-name = "valutatrade_hub"
+module-root = ""
+
+[tool.valutatrade]
+data_dir = "data"
+rates_ttl_seconds = 300
+default_base_currency = "USD"
+log_dir = "logs"
+log_level = "INFO"

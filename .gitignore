@@ -13,3 +13,4 @@ wheels/
 .idea
 logs/
 .env
+.venv-wsl/

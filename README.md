@@ -6,7 +6,7 @@
 
 Итоговый проект курса «Программирование на Python» (Яндекс Практикум × МИФИ).
 
-![Демо](docs/demo.gif)
+[![Демо](https://asciinema.org/a/yciHjXkmoIdlTMaC.svg)](https://asciinema.org/a/yciHjXkmoIdlTMaC)
 
 ## Идея и архитектура
 
